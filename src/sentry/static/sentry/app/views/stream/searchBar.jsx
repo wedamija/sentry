@@ -1,7 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
-import ReactDOM from 'react-dom';
 import Reflux from 'reflux';
 import _ from 'lodash';
 import classNames from 'classnames';
@@ -13,7 +12,6 @@ import ApiMixin from 'app/mixins/apiMixin';
 import {t} from 'app/locale';
 
 import SearchDropdown from 'app/views/stream/searchDropdown';
-import OrganizationState from 'app/mixins/organizationState';
 
 export function addSpace(query = '') {
   if (query.length !== 0 && query[query.length - 1] !== ' ') {
@@ -47,11 +45,7 @@ const SearchBar = createReactClass({
     excludeEnvironment: PropTypes.bool,
   },
 
-  mixins: [
-    ApiMixin,
-    OrganizationState,
-    Reflux.listenTo(MemberListStore, 'onMemberListStoreChange'),
-  ],
+  mixins: [ApiMixin, Reflux.listenTo(MemberListStore, 'onMemberListStoreChange')],
 
   statics: {
     /**
@@ -154,7 +148,15 @@ const SearchBar = createReactClass({
   DROPDOWN_BLUR_DURATION: 200,
 
   blur() {
-    ReactDOM.findDOMNode(this.refs.searchInput).blur();
+    if (!this.searchInput) return;
+
+    this.searchInput.blur();
+  },
+
+  focus() {
+    if (!this.searchInput) return;
+
+    this.searchInput.focus();
   },
 
   onSubmit(evt) {
@@ -194,7 +196,7 @@ const SearchBar = createReactClass({
   },
 
   getCursorPosition() {
-    return ReactDOM.findDOMNode(this.refs.searchInput).selectionStart;
+    return this.searchInput.selectionStart;
   },
 
   /**
@@ -421,14 +423,17 @@ const SearchBar = createReactClass({
 
       newQuery = query.slice(0, lastTermIndex); // get text preceding last term
 
-      newQuery =
-        last.indexOf(':') > -1
-          ? // tag key present: replace everything after colon with replaceText
-            newQuery.replace(/\:"[^"]*"?$|\:\S*$/, ':' + replaceText)
-          : // no tag key present: replace last token with replaceText
-            newQuery.replace(/\S+$/, replaceText);
-
-      newQuery = newQuery.concat(query.slice(lastTermIndex));
+      if (/:\S+\s/.test(newQuery)) {
+        newQuery = newQuery.concat(query.slice(lastTermIndex)) + replaceText;
+      } else {
+        newQuery =
+          last.indexOf(':') > -1
+            ? // tag key present: replace everything after colon with replaceText
+              newQuery.replace(/\:"[^"]*"?$|\:\S*$/, ':' + replaceText)
+            : // no tag key present: replace last token with replaceText
+              newQuery.replace(/\S+$/, replaceText);
+        newQuery = newQuery.concat(query.slice(lastTermIndex));
+      }
     }
 
     this.setState(
@@ -437,8 +442,7 @@ const SearchBar = createReactClass({
       },
       () => {
         // setting a new input value will lose focus; restore it
-        let node = ReactDOM.findDOMNode(this.refs.searchInput);
-        node.focus();
+        this.focus();
 
         // then update the autocomplete box with new contextTypes
         this.updateAutoCompleteItems();
@@ -465,14 +469,14 @@ const SearchBar = createReactClass({
 
     return (
       <div className={classNames(rootClassNames)}>
-        <form className="form-horizontal" ref="searchForm" onSubmit={this.onSubmit}>
+        <form className="form-horizontal" onSubmit={this.onSubmit}>
           <div>
             <input
               type="text"
               className="search-input form-control"
               placeholder={this.props.placeholder}
               name="query"
-              ref="searchInput"
+              ref={ref => (this.searchInput = ref)}
               autoComplete="off"
               value={this.state.query}
               onFocus={this.onQueryFocus}

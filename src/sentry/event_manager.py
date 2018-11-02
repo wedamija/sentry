@@ -717,6 +717,8 @@ class EventManager(object):
         # unused
         time_spent = data.pop('time_spent', None)
 
+        data['node_id'] = '{}:{}'.format(project_id, event_id)[:40]
+
         return Event(
             project_id=project_id or self._project.id,
             event_id=event_id,

@@ -423,15 +423,19 @@ const SearchBar = createReactClass({
 
       newQuery = query.slice(0, lastTermIndex); // get text preceding last term
 
-      if (/:\S+\s/.test(newQuery)) {
+      if (/:(("[^"]+")|([^"]\S*))\s/.test(newQuery)) {
+        // Note: this breaks if you have nested quotes
         newQuery = newQuery.concat(query.slice(lastTermIndex)) + replaceText;
       } else {
+        console.log(last);
         newQuery =
           last.indexOf(':') > -1
             ? // tag key present: replace everything after colon with replaceText
-              newQuery.replace(/\:"[^"]*"?$|\:\S*$/, ':' + replaceText)
+              newQuery.replace(/\:"[^"]*"?$|\:[^"]\S*$/, ':' + replaceText)
             : // no tag key present: replace last token with replaceText
               newQuery.replace(/\S+$/, replaceText);
+
+        console.log(newQuery);
         newQuery = newQuery.concat(query.slice(lastTermIndex));
       }
     }

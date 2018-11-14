@@ -8,13 +8,13 @@ import {t} from 'app/locale';
 import AsyncView from 'app/views/asyncView';
 import Pagination from 'app/components/pagination';
 import PreviewFeature from 'app/components/previewFeature';
-import SearchBar from 'app/components/searchBar';
 import SentryTypes from 'app/sentryTypes';
 import withOrganization from 'app/utils/withOrganization';
 
 import {getParams} from './utils/getParams';
 import EventsChart from './eventsChart';
 import EventsTable from './eventsTable';
+import SearchBar from './searchBar';
 
 class OrganizationEvents extends AsyncView {
   static propTypes = {
@@ -88,9 +88,9 @@ class OrganizationEvents extends AsyncView {
         <Flex align="center" justify="space-between" mb={2}>
           <HeaderTitle>{t('Events')}</HeaderTitle>
           <StyledSearchBar
-            query={location.query && location.query.query}
-            placeholder={t('Search for events, users, tags, and everything else.')}
+            query={(location.query && location.query.query) || ''}
             onSearch={this.handleSearch}
+            organization={organization}
           />
         </Flex>
 

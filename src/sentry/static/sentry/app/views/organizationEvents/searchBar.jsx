@@ -4,22 +4,23 @@ import React from 'react';
 
 import {COLUMNS} from 'app/views/organizationDiscover/data';
 import {defined} from 'app/utils';
+import {
+  fetchOrganizationTagKeys,
+  fetchOrganizationTagValues,
+} from 'app/actionCreators/tags';
 import SentryTypes from 'app/sentryTypes';
 import SmartSearchBar from 'app/components/smartSearchBar';
 import withApi from 'app/utils/withApi';
 
-const TAGS = COLUMNS.map(({name}) => {
-  return name;
-}).reduce((acc, name) => {
-  if (!acc[name]) {
-    acc[name] = {
-      key: name,
-      name,
-    };
-  }
-
+const tagToObjectReducer = (acc, name) => {
+  acc[name] = {
+    key: name,
+    name,
+  };
   return acc;
-}, {});
+};
+
+const TAGS = COLUMNS.map(({name}) => name).reduce(tagToObjectReducer, {});
 
 class SearchBar extends React.Component {
   static propTypes = {
@@ -27,27 +28,37 @@ class SearchBar extends React.Component {
     organization: SentryTypes.Organization,
   };
 
+  constructor() {
+    super();
+
+    this.state = {
+      tags: {},
+    };
+  }
+
+  componentDidMount() {
+    let {api, organization} = this.props;
+    fetchOrganizationTagKeys(api, organization.slug).then(results => {
+      this.setState({
+        tags: results.map(({tag}) => tag).reduce(tagToObjectReducer, {}),
+      });
+    });
+  }
+
   /**
    * Returns array of tag values that substring match `query`; invokes `callback`
    * with data when ready
    */
   getTagValues = (tag, query) => {
-    let {organization} = this.props;
+    let {api, organization} = this.props;
 
-    return this.props.api
-      .requestPromise(`/organizations/${organization.slug}/tags/${tag.key}/values/`, {
-        data: {
-          query,
-        },
-        method: 'GET',
-      })
-      .then(
-        results =>
-          flatten(results.filter(({value}) => defined(value)).map(({value}) => value)),
-        () => {
-          throw new Error('Unable to fetch project tags');
-        }
-      );
+    return fetchOrganizationTagValues(api, organization.slug, tag.key, query).then(
+      results =>
+        flatten(results.filter(({value}) => defined(value)).map(({value}) => value)),
+      () => {
+        throw new Error('Unable to fetch project tags');
+      }
+    );
   };
 
   render() {
@@ -55,7 +66,10 @@ class SearchBar extends React.Component {
       <SmartSearchBar
         {...this.props}
         onGetTagValues={this.getTagValues}
-        supportedTags={TAGS}
+        supportedTags={{
+          ...TAGS,
+          ...this.state.tags,
+        }}
       />
     );
   }

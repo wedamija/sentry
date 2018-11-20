@@ -9,9 +9,14 @@ from django.utils import timezone
 from django.template.defaultfilters import slugify
 
 from sentry.constants import SentryAppStatus, SENTRY_APP_SLUG_MAX_LENGTH
-from sentry.db.models import BoundedPositiveIntegerField, FlexibleForeignKey, ParanoidModel
 from sentry.models import Organization
 from sentry.models.apiscopes import HasApiScopes
+from sentry.db.models import (
+    ArrayField,
+    BoundedPositiveIntegerField,
+    FlexibleForeignKey,
+    ParanoidModel,
+)
 
 
 def default_uuid():
@@ -57,6 +62,8 @@ class SentryApp(ParanoidModel, HasApiScopes):
     # does the application subscribe to `event.alert`,
     # meaning can it be used in alert rules as a {service} ?
     is_alertable = models.BooleanField(default=False)
+
+    events = ArrayField(of=models.TextField, null=True)
 
     overview = models.TextField(null=True)
 

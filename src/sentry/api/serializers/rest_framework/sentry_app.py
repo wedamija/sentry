@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from rest_framework import serializers
 from rest_framework.serializers import Serializer, ValidationError
 
+from sentry.api.serializers.rest_framework import ListField
 from sentry.models import ApiScopes
 
 
@@ -20,6 +21,7 @@ class ApiScopesField(serializers.WritableField):
 class SentryAppSerializer(Serializer):
     name = serializers.CharField()
     scopes = ApiScopesField()
+    events = ListField(child=serializers.CharField())
     webhookUrl = serializers.URLField()
     redirectUrl = serializers.URLField(required=False)
     isAlertable = serializers.BooleanField(required=False)

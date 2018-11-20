@@ -1,19 +1,24 @@
+import {uniq} from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
 import {browserHistory} from 'react-router';
 
+import {defined} from 'app/utils';
 import {Panel, PanelBody, PanelHeader} from 'app/components/panels';
 import {addErrorMessage} from 'app/actionCreators/indicator';
 import {t} from 'app/locale';
 import AsyncView from 'app/views/asyncView';
 import Form from 'app/views/settings/components/forms/form';
 import FormField from 'app/views/settings/components/forms/formField';
+import MultipleCheckbox from 'app/views/settings/components/forms/controls/multipleCheckbox';
 import JsonForm from 'app/views/settings/components/forms/jsonForm';
 import SettingsPageHeader from 'app/views/settings/components/settingsPageHeader';
 import TextCopyInput from 'app/views/settings/components/forms/textCopyInput';
 import sentryApplicationForm from 'app/data/forms/sentryApplication';
 import getDynamicText from 'app/utils/getDynamicText';
 import ApplicationScopes from './applicationScopes';
+
+const EVENT_CHOICES = [['issue', 'Issue events']];
 
 class SentryApplicationDetails extends AsyncView {
   static contextTypes = {
@@ -44,6 +49,17 @@ class SentryApplicationDetails extends AsyncView {
     onBlur(scopes, e);
   };
 
+  // Events come to the front-end in their expanded form (issue.created, event.created, etc.)
+  // but we display them here by resource (Issue, Event, etc.). This consolidates all events
+  // into resource-centric values.
+  condense(events) {
+    if (!defined(events.peek)) {
+      return [];
+    }
+
+    return uniq(events.peek().map(e => e.split('.')[0]));
+  }
+
   onSubmitSuccess = data => {
     const {orgId} = this.props.params;
     browserHistory.push(`/settings/${orgId}/developer-settings/`);
@@ -54,6 +70,7 @@ class SentryApplicationDetails extends AsyncView {
     const {app} = this.state;
     let method = app ? 'PUT' : 'POST';
     let endpoint = app ? `/sentry-apps/${app.slug}/` : '/sentry-apps/';
+
     return (
       <div>
         <SettingsPageHeader title={this.getTitle()} />
@@ -85,6 +102,29 @@ class SentryApplicationDetails extends AsyncView {
               </FormField>
             </PanelBody>
           </Panel>
+
+          <Panel>
+            <PanelHeader>{t('Event Subscriptions')}</PanelHeader>
+            <PanelBody>
+              <FormField
+                name="events"
+                inline={false}
+                flexibleControlStateSize={true}
+                getData={data => ({events: data})}
+              >
+                {({onChange, value}) => (
+                  <span>
+                    <MultipleCheckbox
+                      choices={EVENT_CHOICES}
+                      onChange={onChange}
+                      value={this.condense(value)}
+                    />
+                  </span>
+                )}
+              </FormField>
+            </PanelBody>
+          </Panel>
+
           {app && (
             <Panel>
               <PanelHeader>{t('Credentials')}</PanelHeader>

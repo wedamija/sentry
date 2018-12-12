@@ -13,7 +13,7 @@ from sentry.api.serializers import serialize
 from sentry.api.serializers.rest_framework import (
     ReleaseHeadCommitSerializer, ReleaseHeadCommitSerializerDeprecated, ListField
 )
-from sentry.models import Activity, Environment, Release, ReleaseEnvironment
+from sentry.models import Activity, Release
 from sentry.signals import release_created
 from sentry.utils.apidocs import scenario, attach_scenarios
 
@@ -92,33 +92,35 @@ class OrganizationReleasesEndpoint(OrganizationReleasesBaseEndpoint, Environment
                               "starts with" filter for the version.
         """
         query = request.GET.get('query')
-        try:
-            environment = self._get_environment_from_request(
-                request,
-                organization.id,
-            )
-        except Environment.DoesNotExist:
-            queryset = Release.objects.none()
-        else:
-            queryset = Release.objects.filter(
-                organization=organization,
-                projects__in=self.get_allowed_projects(request, organization)
-            ).select_related('owner')
 
-            if environment is not None:
-                queryset = queryset.filter(id__in=ReleaseEnvironment.objects.filter(
-                    organization_id=organization.id,
-                    environment_id=environment.id,
-                ).values_list('release_id', flat=True))
+        filter_params = self.get_filter_params(
+            request,
+            organization,
+            date_filter_optional=True,
+        )
+
+        queryset = Release.objects.filter(
+            organization=organization,
+            projects__id__in=filter_params['project_id'],
+        ).select_related('owner').distinct()
+
+        if 'environment' in filter_params:
+            queryset = queryset.filter(
+                releaseenvironment__environment__name__in=filter_params['environment'],
+            )
 
         if query:
             queryset = queryset.filter(
                 version__istartswith=query,
             )
 
-        queryset = queryset.extra(select={
-            'sort': 'COALESCE(date_released, date_added)',
-        })
+        sort_query = 'COALESCE(sentry_release.date_released, sentry_release.date_added)'
+        queryset = queryset.extra(select={'sort': sort_query})
+        if filter_params['start'] and filter_params['end']:
+            queryset = queryset.extra(
+                where=['%s BETWEEN %%s and %%s' % sort_query],
+                params=[filter_params['start'], filter_params['end']]
+            )
 
         return self.paginate(
             request=request,
